@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.example.freezer.model.DrawerWithItems
 import com.example.freezer.ui.theme.FreezerTheme
+import com.google.android.material.transition.MaterialContainerTransform
 
 class MainActivity : ComponentActivity() {
 
@@ -68,6 +70,8 @@ class MainActivity : ComponentActivity() {
 fun FreezerScreen(viewModel: DrawerViewModel) {
     //val drawers by viewModel.drawers.observeAsState(listOf())
 
+    val selectedCard = remember { mutableStateOf<DrawerWithItems?>(null) }
+
     val drawersWithItems by viewModel.drawersWithItems.observeAsState(listOf())
 
     val isItemDialogOpen = remember { mutableStateOf(false) }
@@ -92,8 +96,17 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            item { Text(
+                "Freezer",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
+            ) }
             items(drawersWithItems) { drawerWithItems ->
-                DrawerCard(drawerWithItems = drawerWithItems)
+                DrawerCard(
+                    drawerWithItems = drawerWithItems,
+                    onClick = { selectedCard.value = drawerWithItems }
+                )
+
             }
             item {
                 AddDrawer(onClick = {
@@ -102,6 +115,18 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
             }
 
             item { Spacer(modifier = Modifier.height(150.dp)) }
+        }
+        if (selectedCard.value != null) {
+            selectedCard.value?.let {
+                DrawerDetailScreen(
+                    drawerWithItems = it,
+                    onClose = { selectedCard.value = null },
+                    onEdit = { /* Implement Edit Logic Here */ },
+                    onDeleteItem = { itemName ->
+                        // Implement Delete Logic Here, e.g., viewModel.deleteItem(itemName)
+                    }
+                )
+            }
         }
     }
 
@@ -187,6 +212,7 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
             }
         )
     }
+
 }
 
 @Composable
@@ -264,19 +290,20 @@ fun BottomNavigationBar() {
 }
 
 @Composable
-fun DrawerCard(drawerWithItems: DrawerWithItems) {
+fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
         modifier = Modifier
+            .clickable(onClick = onClick)
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(vertical = 8.dp)
+            .padding(vertical = 4.dp)
     ) {
         Column {
             Text("Drawer ${drawerWithItems.drawer.name}",
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(16.dp)
             )
             Row(
@@ -312,6 +339,51 @@ fun AddDrawer(onClick: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(16.dp)
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, onEdit: () -> Unit, onDeleteItem: (String) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column {
+            TopAppBar(
+                navigationIcon = {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                title = { Text("Details for ${drawerWithItems.drawer.name}") },
+                actions = {
+                    TextButton(onClick = onEdit) {
+                        Text("Edit")
+                    }
+                }
+            )
+            LazyColumn(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                items(drawerWithItems.items) { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(item.name, style = MaterialTheme.typography.bodyMedium)
+                        IconButton(onClick = { onDeleteItem(item.name) }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        }
+                    }
+                    Divider()
+                }
+            }
+        }
     }
 }
 
