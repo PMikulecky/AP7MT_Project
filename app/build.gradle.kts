@@ -78,4 +78,7 @@ dependencies {
 
     implementation ("androidx.compose.runtime:runtime-livedata:1.5.4")
 
+    implementation ("com.google.android.material:material:1.11.0")
+
+
 }

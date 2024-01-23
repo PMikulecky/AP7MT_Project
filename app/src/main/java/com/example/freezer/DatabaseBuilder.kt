@@ -13,7 +13,8 @@ object DatabaseBuilder {
                 context.applicationContext,
                 AppDatabase::class.java,
                 "freezer_database"
-            ).build()
+            ).fallbackToDestructiveMigration()
+                .build()
             INSTANCE = instance
             instance
         }

@@ -20,6 +20,10 @@ interface DrawerDao {
     @Query("SELECT * FROM drawers WHERE drawerId = :drawerId")
     suspend fun getDrawerWithItems(drawerId: Int): List<DrawerWithItems>
 
+    @Transaction
+    @Query("SELECT * FROM drawers")
+    suspend fun getAllDrawersWithItems(): List<DrawerWithItems>
+
     @Query("SELECT * FROM drawers")
     suspend fun getAllDrawers(): List<Drawer>
 }

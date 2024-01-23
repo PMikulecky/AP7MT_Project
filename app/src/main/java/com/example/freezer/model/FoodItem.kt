@@ -10,8 +10,8 @@ import androidx.room.Relation
 data class FoodItem (
     @PrimaryKey(autoGenerate = true) val itemId: Int = 0,
     val drawerId: Int,
-    val name: String,
-    val quantity: Int,
-    val dateStored: Int,
-    val shelfLife: Int
+    val name: String
+    //val quantity: Int,
+    //val dateStored: Int,
+    //val shelfLife: Int
 )

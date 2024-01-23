@@ -24,25 +24,45 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
     private val _drawers = MutableLiveData<List<Drawer>>()
     val drawers: LiveData<List<Drawer>> = _drawers
 
+    private val _drawersWithItems = MutableLiveData<List<DrawerWithItems>>()
+    val drawersWithItems: LiveData<List<DrawerWithItems>> = _drawersWithItems
+
+    init {
+        getAllDrawers()
+        getAllDrawersWithItems()
+    }
+
     // Function to add a drawer to the database
     fun addDrawer(name: String) {
         viewModelScope.launch {
             val newDrawerId = drawerDao.insertDrawer(Drawer(name = name))
             // Do something with the newDrawerId if needed
+
+            refreshDrawersWithItems()
         }
     }
 
     // Function to add an item to a drawer
-    fun addItemToDrawer(drawerId: Int, itemName: String, dateStored: Int, quantity: Int, shelfLife: Int) {
+    // fun addItemToDrawer(drawerId: Int, itemName: String, dateStored: Int, quantity: Int, shelfLife: Int) {
+    fun addItemToDrawer(drawerId: Int, itemName: String) {
         viewModelScope.launch {
             val newItem = FoodItem(
                 drawerId = drawerId,
-                name = itemName,
-                dateStored = dateStored,
-                quantity = quantity,
-                shelfLife = shelfLife
+                name = itemName
+                //dateStored = dateStored,
+                //quantity = quantity,
+                //shelfLife = shelfLife
             )
             itemDao.insertItem(newItem)
+
+            refreshDrawersWithItems()
+        }
+    }
+
+    private fun refreshDrawersWithItems() {
+        viewModelScope.launch {
+            val allDrawersWithItems = drawerDao.getAllDrawersWithItems()
+            _drawersWithItems.postValue(allDrawersWithItems)
         }
     }
 
@@ -58,6 +78,13 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             val drawerWithItems = drawerDao.getDrawerWithItems(drawerId)
 
+        }
+    }
+
+    fun getAllDrawersWithItems() {
+        viewModelScope.launch {
+            val allDrawersWithItems = drawerDao.getAllDrawersWithItems() // Assuming such a method exists in your DAO
+            _drawersWithItems.postValue(allDrawersWithItems)
         }
     }
 }
