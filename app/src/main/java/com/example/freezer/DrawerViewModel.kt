@@ -87,4 +87,28 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
             _drawersWithItems.postValue(allDrawersWithItems)
         }
     }
+
+    // Function to remove an item
+    fun deleteItem(itemId: Int) {
+        viewModelScope.launch {
+            itemDao.deleteItem(itemId) // Assuming such a method exists in your DAO
+            refreshDrawersWithItems()
+        }
+    }
+
+    // Function to remove a drawer and all items in it
+    fun deleteDrawer(drawerId: Int) {
+        viewModelScope.launch {
+            itemDao.deleteItemsByDrawerId(drawerId) // Assuming such a method exists in your DAO
+            drawerDao.deleteDrawer(drawerId) // Assuming such a method exists in your DAO
+            refreshDrawersWithItems()
+        }
+    }
+
+    fun updateDrawerName(drawerId: Int, newName: String) {
+        viewModelScope.launch {
+            drawerDao.updateDrawerName(drawerId, newName)
+            refreshDrawersWithItems()  // Refresh the list of drawers with items
+        }
+    }
 }

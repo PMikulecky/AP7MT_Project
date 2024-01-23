@@ -11,8 +11,11 @@ interface ItemDao {
     @Update
     suspend fun updateItem(item: FoodItem)
 
-    @Delete
-    suspend fun deleteItem(item: FoodItem)
+    //@Delete
+    @Query("DELETE FROM items WHERE ItemId = :itemId")
+    suspend fun deleteItem(itemId: Int)
+    @Query("DELETE FROM items WHERE drawerId = :drawerId")
+    suspend fun deleteItemsByDrawerId(drawerId: Int)
     @Query("SELECT * FROM items WHERE drawerId = :drawerId")
     suspend fun getItemsByDrawer(drawerId: Int): List<FoodItem>
 }

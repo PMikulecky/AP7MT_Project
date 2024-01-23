@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import com.example.freezer.model.DrawerWithItems
+import com.example.freezer.model.FoodItem
 import com.example.freezer.ui.theme.FreezerTheme
 import com.google.android.material.transition.MaterialContainerTransform
 
@@ -76,6 +77,7 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
 
     val isItemDialogOpen = remember { mutableStateOf(false) }
     val isDrawerDialogOpen = remember { mutableStateOf(false) }
+    val isEditDialogOpen = remember { mutableStateOf(false) }
 
 
     val foodItemName = remember { mutableStateOf("") }
@@ -83,6 +85,7 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
     val selectedDrawer = remember { mutableStateOf<DrawerWithItems?>(null) }
     val drawers = viewModel.drawersWithItems.observeAsState(listOf()).value
     val expanded = remember { mutableStateOf(false) } // State to handle dropdown menu visibility
+    val editDrawerName = remember { mutableStateOf("") }
 
     AddDrawerDialog(viewModel, isDrawerDialogOpen)
 
@@ -121,9 +124,29 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
                 DrawerDetailScreen(
                     drawerWithItems = it,
                     onClose = { selectedCard.value = null },
-                    onEdit = { /* Implement Edit Logic Here */ },
-                    onDeleteItem = { itemName ->
-                        // Implement Delete Logic Here, e.g., viewModel.deleteItem(itemName)
+                    onEdit = {
+                        editDrawerName.value = it.drawer.name
+                        isEditDialogOpen.value = true
+                    },
+                    onDeleteItem = { itemId ->
+                        viewModel.deleteItem(itemId)
+                    }
+                )
+
+                EditDrawerDialog(
+                    drawer = it,
+                    isEditDialogOpen = isEditDialogOpen,
+                    editDrawerName = editDrawerName,
+                    onDismiss = { isEditDialogOpen.value = false },
+                    onSave = { newDrawerName ->
+                        viewModel.updateDrawerName(it.drawer.drawerId, newDrawerName)
+                        isEditDialogOpen.value = false
+                    },
+                    onDelete = {
+
+                        viewModel.deleteDrawer(it.drawer.drawerId)
+                        selectedCard.value = null
+                        isEditDialogOpen.value = false
                     }
                 )
             }
@@ -263,6 +286,46 @@ fun AddDrawerDialog(viewModel: DrawerViewModel, isDialogOpen: MutableState<Boole
     }
 }
 
+@Composable
+fun EditDrawerDialog(drawer: DrawerWithItems,
+                     isEditDialogOpen: MutableState<Boolean>,
+                     editDrawerName: MutableState<String>,
+                     onDismiss: () -> Unit,
+                     onSave: (String) -> Unit,
+                     onDelete: () -> Unit) {
+    if (isEditDialogOpen.value) {
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+            title = { Text("Edit Drawer") },
+            text = {
+                OutlinedTextField(
+                    value = editDrawerName.value,
+                    onValueChange = { editDrawerName.value = it },
+                    label = { Text("New Name") }
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { onSave(editDrawerName.value) }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                Row(
+                    horizontalArrangement = Arrangement.End,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    TextButton(onClick = { onDelete() }) {
+                        Text("Delete Drawer")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { onDismiss() }) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        )
+    }
+}
 
 @Composable
 fun BottomNavigationBar() {
@@ -322,6 +385,7 @@ fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
         }
     }
 }
+
 @Composable
 fun AddDrawer(onClick: () -> Unit) {
     OutlinedCard(
@@ -344,7 +408,8 @@ fun AddDrawer(onClick: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, onEdit: () -> Unit, onDeleteItem: (String) -> Unit) {
+fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, onEdit: () -> Unit, onDeleteItem: (Int) -> Unit) {
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -376,7 +441,7 @@ fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, on
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(item.name, style = MaterialTheme.typography.bodyMedium)
-                        IconButton(onClick = { onDeleteItem(item.name) }) {
+                        IconButton(onClick = { onDeleteItem(item.itemId) }) {  // Use item's ID here
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }
                     }
@@ -385,6 +450,10 @@ fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, on
             }
         }
     }
+}
+
+fun deleteItem(itemName: String, drawerId: Int) {
+    // Logic to delete the item from the database
 }
 
 /*
