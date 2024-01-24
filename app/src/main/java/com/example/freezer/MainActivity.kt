@@ -24,29 +24,28 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.freezer.model.DrawerWithItems
-import com.example.freezer.model.FoodItem
 import com.example.freezer.ui.theme.FreezerTheme
-import com.google.android.material.transition.MaterialContainerTransform
 
 class MainActivity : ComponentActivity() {
 
 
     private lateinit var viewModel: DrawerViewModel
+    private lateinit var apiViewModel: ApiViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         viewModel = ViewModelProvider(this).get(DrawerViewModel::class.java)
-
+        apiViewModel = ViewModelProvider(this).get(ApiViewModel::class.java)
 
         //viewModel.addDrawer("new Drawer 2")
         //viewModel.addItemToDrawer(2, "Potato")
@@ -66,7 +65,7 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "home") {
                         composable("home") { HomeScreen(viewModel, innerPadding) }
                         composable("search") { SearchScreen(viewModel) }
-                        composable("profile") { ProfileScreen() }
+                        composable("profile") { AIScreen(apiViewModel) }
                         // Add other composable routes if necessary
                     }
                 }
@@ -293,8 +292,42 @@ fun SearchScreen(viewModel: DrawerViewModel) {
 }
 
 @Composable
-fun ProfileScreen() {
+fun AIScreen(apiViewModel: ApiViewModel) {
+    // State to hold the input text
+    val inputText = remember { mutableStateOf("") }
 
+    // State to hold the response from the API
+    val apiResponse = apiViewModel.chatResponse.observeAsState("")
+    val isLoading = apiViewModel.isLoading.observeAsState(initial = false)
+
+
+    Column(modifier = Modifier.padding(16.dp)) {
+        // Text field for user input
+        OutlinedTextField(
+            value = inputText.value,
+            onValueChange = { inputText.value = it },
+            label = { Text("Enter items") },
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        // Button to trigger API call
+        Button(
+            onClick = {
+                apiViewModel.getChatResponseFromAPI(inputText.value)
+            }
+        ) {
+            Text("Get Response")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Display the API response
+        Text("Response: ${apiResponse.value}")
+
+        if (isLoading.value) {
+            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+        }
+    }
 }
 
 @Composable
