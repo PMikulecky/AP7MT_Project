@@ -3,6 +3,7 @@ package com.example.freezer
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -25,8 +26,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -35,6 +39,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.freezer.model.DrawerWithItems
 import com.example.freezer.ui.theme.FreezerTheme
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
 
@@ -90,12 +95,6 @@ fun HomeScreen(viewModel: DrawerViewModel, innerPadding: PaddingValues) {
     val isDrawerDialogOpen = remember { mutableStateOf(false) }
     val isEditDialogOpen = remember { mutableStateOf(false) }
 
-
-    val foodItemName = remember { mutableStateOf("") }
-    val foodItemCount = remember { mutableStateOf("") }
-    val selectedDrawer = remember { mutableStateOf<DrawerWithItems?>(null) }
-    val drawers = viewModel.drawersWithItems.observeAsState(listOf()).value
-    val expanded = remember { mutableStateOf(false) } // State to handle dropdown menu visibility
     val editDrawerName = remember { mutableStateOf("") }
 
 
@@ -166,85 +165,7 @@ fun HomeScreen(viewModel: DrawerViewModel, innerPadding: PaddingValues) {
     )
 
     if (isItemDialogOpen.value) {
-        AlertDialog(
-            onDismissRequest = {
-                isItemDialogOpen.value = false
-            },
-            title = { Text("Add New Item") },
-            text = {
-                Column {
-                    OutlinedTextField(
-                        value = foodItemName.value,
-                        onValueChange = { foodItemName.value = it },
-                        label = { Text("Food Item Name") }
-                    )
-                    OutlinedTextField(
-                        value = foodItemCount.value,
-                        onValueChange = {
-                            // Update the state to the new value or revert to "1" if it's not a number
-                            foodItemCount.value = it.filter { it.isDigit() }
-                        },
-                        label = { Text("Quantity") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-
-                    ExposedDropdownMenuBox(
-                        expanded = expanded.value,
-                        onExpandedChange = { expanded.value = !expanded.value }
-                    ) {
-                        OutlinedTextField(
-                            readOnly = true,
-                            value = selectedDrawer.value?.drawer?.name ?: "Select a drawer",
-                            onValueChange = {},
-                            label = { Text("Drawer") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded.value)
-                            },
-                            modifier = Modifier.menuAnchor()
-                        )
-                        ExposedDropdownMenu(
-                            expanded = expanded.value,
-                            onDismissRequest = { expanded.value = false }
-                        ) {
-                            drawersWithItems.forEach { drawerWithItems ->
-                                DropdownMenuItem(
-                                    text = { Text(text = drawerWithItems.drawer.name) },
-                                    onClick = {
-                                        selectedDrawer.value = drawerWithItems
-                                        expanded.value = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.addItemToDrawer(
-                            selectedDrawer.value?.drawer?.drawerId ?: 0,
-                            foodItemName.value,
-                            //foodItemCount.value
-                        )
-                        // Reset the state and close the dialog
-                        foodItemName.value = ""
-                        //foodItemCount.value = 1
-                        selectedDrawer.value = null
-                        isItemDialogOpen.value = false
-                    }
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { isItemDialogOpen.value = false }
-                ) {
-                    Text("Cancel")
-                }
-            }
-        )
+        AddItemDialog(viewModel = viewModel, isItemDialogOpen = isItemDialogOpen)
 
     }
     if (isDrawerDialogOpen.value) {
@@ -418,7 +339,142 @@ fun EditDrawerDialog(drawer: DrawerWithItems,
         )
     }
 }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddItemDialog(viewModel: DrawerViewModel,isItemDialogOpen: MutableState<Boolean>){
+    val foodItemName = remember { mutableStateOf("") }
+    val foodItemCount = remember { mutableStateOf("") }
+    val quantityType = remember { mutableStateOf("pieces") } // For Type of Quantity
+    val selectedDrawer = remember { mutableStateOf<DrawerWithItems?>(null) }
+    val expanded = remember { mutableStateOf(false) }
+    val quantityTypeExpanded = remember { mutableStateOf(false) } // For Type of Quantity dropdown
+    val drawersWithItems by viewModel.drawersWithItems.observeAsState(listOf())
 
+
+    AlertDialog(
+        onDismissRequest = {
+            isItemDialogOpen.value = false
+        },
+        title = { Text("Add New Item") },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = foodItemName.value,
+                    onValueChange = { foodItemName.value = it },
+                    label = { Text("Food Item Name") },
+                    modifier = Modifier.padding(vertical = 8.dp)
+                )
+                Row{
+
+                    OutlinedTextField(
+                        value = foodItemCount.value,
+                        onValueChange = {
+                            // Update the state to the new value or revert to "1" if it's not a number
+                            foodItemCount.value = it.filter { it.isDigit() }
+                        },
+                        label = { Text("Quantity") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.weight(1f)
+                            .padding(vertical = 8.dp)
+                            .padding(end = 8.dp)
+                    )
+                    ExposedDropdownMenuBox(
+                        expanded = quantityTypeExpanded.value,
+                        onExpandedChange = { quantityTypeExpanded.value = !quantityTypeExpanded.value },
+                        modifier = Modifier.weight(1f)
+                            .padding(vertical = 8.dp)
+                    ) {
+                        OutlinedTextField(
+                            readOnly = true,
+                            value = quantityType.value,
+                            onValueChange = {},
+                            label = { Text("Type") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = quantityTypeExpanded.value)
+                            },
+                            modifier = Modifier.menuAnchor()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = quantityTypeExpanded.value,
+                            onDismissRequest = { quantityTypeExpanded.value = false }
+                        ) {
+                            listOf("pieces", "grams", "milliliters").forEach { type ->
+                                DropdownMenuItem(
+                                    text = { Text(type) },
+                                    onClick = {
+                                        quantityType.value = type
+                                        quantityTypeExpanded.value = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                ExposedDropdownMenuBox(
+                    expanded = expanded.value,
+                    onExpandedChange = { expanded.value = !expanded.value }
+                ) {
+                    OutlinedTextField(
+                        readOnly = true,
+                        value = selectedDrawer.value?.drawer?.name ?: "Select a drawer",
+                        onValueChange = {},
+                        label = { Text("Drawer") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded.value)
+                        },
+                        modifier = Modifier.menuAnchor()
+                            .padding(vertical = 8.dp)
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded.value,
+                        onDismissRequest = { expanded.value = false }
+                    ) {
+                        drawersWithItems.forEach { drawerWithItems ->
+                            DropdownMenuItem(
+                                text = { Text(text = drawerWithItems.drawer.name) },
+                                onClick = {
+                                    selectedDrawer.value = drawerWithItems
+                                    expanded.value = false
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val currentDate = LocalDate.now()
+                    viewModel.addItemToDrawer(
+                        selectedDrawer.value?.drawer?.drawerId ?: 0,
+                        foodItemName.value,
+                        foodItemCount.value,
+                        quantityType.value,
+                        currentDate // Pass the current date
+                    )
+                    // Reset the state and close the dialog
+                    foodItemName.value = ""
+                    foodItemCount.value = 1.toString()
+                    quantityType.value = "pieces"
+                    selectedDrawer.value = null
+                    isItemDialogOpen.value = false
+                }
+            ) {
+                Text("Save")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = { isItemDialogOpen.value = false }
+            ) {
+                Text("Cancel")
+            }
+        }
+    )
+
+}
 @Composable
 fun BottomNavigationBar(navController: NavController) {
 

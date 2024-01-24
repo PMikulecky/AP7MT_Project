@@ -10,6 +10,8 @@ import kotlinx.coroutines.launch
 import com.example.freezer.model.FoodItem
 import com.example.freezer.model.Drawer
 import com.example.freezer.model.DrawerWithItems
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.Date
 
 class DrawerViewModel(application: Application) : AndroidViewModel(application) {
@@ -47,14 +49,15 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
 
     // Function to add an item to a drawer
     // fun addItemToDrawer(drawerId: Int, itemName: String, dateStored: Int, quantity: Int, shelfLife: Int) {
-    fun addItemToDrawer(drawerId: Int, itemName: String) {
+    fun addItemToDrawer(drawerId: Int, itemName: String,itemCount: String, quantityType: String, dateAdded: LocalDate) {
         viewModelScope.launch {
+            val formattedDate = dateAdded.format(DateTimeFormatter.ISO_LOCAL_DATE)
             val newItem = FoodItem(
                 drawerId = drawerId,
-                name = itemName
-                //dateStored = dateStored,
-                //quantity = quantity,
-                //shelfLife = shelfLife
+                name = itemName,
+                itemCount = itemCount,
+                quantityType = quantityType,
+                dateAdded = formattedDate
             )
             itemDao.insertItem(newItem)
 
