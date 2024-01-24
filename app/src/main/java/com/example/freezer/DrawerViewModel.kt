@@ -106,6 +106,7 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
             itemDao.deleteItem(itemId)
             refreshDrawersWithItems()
         }
+
     }
 
     // Function to remove a drawer and all items in it
@@ -115,6 +116,7 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
             drawerDao.deleteDrawer(drawerId)
             refreshDrawersWithItems()
         }
+
     }
 
     fun updateDrawerName(drawerId: Int, newName: String) {

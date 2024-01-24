@@ -13,12 +13,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.*
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
+
 
 
 import androidx.compose.runtime.Composable
@@ -44,6 +48,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.freezer.model.DrawerWithItems
+import com.example.freezer.model.FoodItem
 import com.example.freezer.ui.theme.FreezerTheme
 import java.time.LocalDate
 
@@ -105,6 +110,8 @@ fun HomeScreen(viewModel: DrawerViewModel, innerPadding: PaddingValues) {
 
 
 
+
+
     Scaffold(
         bottomBar = { BottomNavigationBar(navController) },
         floatingActionButton = { AddDrawerFAB{isItemDialogOpen.value = true} },
@@ -118,7 +125,7 @@ fun HomeScreen(viewModel: DrawerViewModel, innerPadding: PaddingValues) {
             item { Text(
                 "Freezer",
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp).padding(horizontal = 16.dp).padding(top = 16.dp)
             ) }
             items(drawersWithItems) { drawerWithItems ->
                 DrawerCard(
@@ -218,7 +225,7 @@ fun SearchScreen(viewModel: DrawerViewModel) {
             Text(
                 "Freezer",
                 style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier.padding(16.dp).padding(horizontal = 16.dp).padding(top = 16.dp)
             )
             //Spacer(modifier = Modifier.height(16.dp))
             // Search Bar
@@ -228,7 +235,7 @@ fun SearchScreen(viewModel: DrawerViewModel) {
                 label = { Text("Search Food Items") },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
+                    .padding(horizontal = 16.dp)
             )
 
             // List of Search Results
@@ -239,7 +246,8 @@ fun SearchScreen(viewModel: DrawerViewModel) {
                             .fillMaxWidth()
                             .padding(16.dp)
                             .clickable {
-                                drawerWithItemsLiveData.value = viewModel.getDrawerWithItemsForItem(item)
+                                drawerWithItemsLiveData.value =
+                                    viewModel.getDrawerWithItemsForItem(item)
                             },
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -281,7 +289,7 @@ fun AIScreen(apiViewModel: ApiViewModel, viewModel: DrawerViewModel) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
-                    imageVector = Icons.Default.PlayArrow,
+                    imageVector = Icons.Default.Refresh,
                     contentDescription = "Star"
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -290,16 +298,45 @@ fun AIScreen(apiViewModel: ApiViewModel, viewModel: DrawerViewModel) {
         } },
         floatingActionButtonPosition = FabPosition.Center,
         content = {innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
+        Column(modifier = Modifier
+            .padding(innerPadding)
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())) {
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "Recipe generator",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
+            )
 
-            // Display the API response
-            Text(apiResponse.value)
+            Spacer(modifier = Modifier.height(0.dp))
 
-            if (isLoading.value) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            Card (colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface,
+            ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                border = BorderStroke(1.dp, Color.LightGray)
+            ){
+                Spacer(modifier = Modifier.height(0.dp))
+                Text("Here you can get some cooking ideas based on your freezer content",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding( 16.dp))
+
+                Divider()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(apiResponse.value,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp))
+
+                if (isLoading.value) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                }
+
+                Spacer(modifier = Modifier.height(60.dp))
             }
+
         }
     }
     )
@@ -495,7 +532,7 @@ fun AddItemDialog(viewModel: DrawerViewModel,isItemDialogOpen: MutableState<Bool
                     ) {
                         drawersWithItems.forEach { drawerWithItems ->
                             DropdownMenuItem(
-                                text = { Text(text = drawerWithItems.drawer.name) },
+                                text = { Text("${drawerWithItems.drawer.drawerId}: ${drawerWithItems.drawer.name}") },
                                 onClick = {
                                     selectedDrawer.value = drawerWithItems
                                     expanded.value = false
@@ -545,7 +582,7 @@ fun BottomNavigationBar(navController: NavController) {
     NavigationBar{
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
-            label = { Text("Home") },
+            label = { Text("Freezer") },
             selected = navController.currentDestination?.route == "home",
             onClick = { navController.navigate("home") }
         )
@@ -556,8 +593,8 @@ fun BottomNavigationBar(navController: NavController) {
             onClick = { navController.navigate("search") }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Profile") },
-            label = { Text("Profile") },
+            icon = { Icon(Icons.Outlined.Star, contentDescription = "Profile") },
+            label = { Text("Recipes") },
             selected = navController.currentDestination?.route == "profile",
             onClick = { navController.navigate("profile") }
         )
@@ -579,14 +616,23 @@ fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
         border = BorderStroke(1.dp, Color.LightGray)
     ) {
         Column {
-            Text("Drawer ${drawerWithItems.drawer.name}",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(16.dp)
-            )
+            Row {
+                Text("${drawerWithItems.drawer.drawerId}",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(16.dp),
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(drawerWithItems.drawer.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
+            Divider()
+            Spacer(modifier = Modifier.padding(8.dp))
             FlowRow(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 24.dp)
                     .wrapContentWidth(align = Alignment.Start),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -606,7 +652,7 @@ fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
                     Text(itemCountText,
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier
-                            .padding(end = 8.dp))
+                            .padding(end = 4.dp))
 
                 }
             }
@@ -637,6 +683,7 @@ fun AddDrawer(onClick: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, onEdit: () -> Unit, onDeleteItem: (Int) -> Unit) {
+
 
     Box(
         modifier = Modifier
@@ -713,6 +760,27 @@ fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, on
                 }
             }
         }
+    }
+}
+
+@Composable
+fun EditItemDialog(item: MutableState<FoodItem>, isOpen: MutableState<Boolean>, onSave: (FoodItem) -> Unit, onDismiss: () -> Unit) {
+    if (isOpen.value) {
+        AlertDialog(
+            onDismissRequest = { onDismiss() },
+            title = { Text("Edit Item") },
+            // Add text fields for item properties here
+            confirmButton = {
+                TextButton(onClick = { onSave(item.value) }) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { onDismiss() }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }
 

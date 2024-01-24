@@ -9,7 +9,7 @@ import com.example.freezer.model.FoodItem
 import androidx.room.TypeConverters
 import com.example.freezer.model.Converters
 
-@Database(entities = [Drawer::class, FoodItem::class], version = 5)
+@Database(entities = [Drawer::class, FoodItem::class], version = 6)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun drawerDao(): DrawerDao
