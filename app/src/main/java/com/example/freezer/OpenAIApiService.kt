@@ -15,7 +15,7 @@ val okHttpClient = OkHttpClient.Builder()
     .writeTimeout(30, TimeUnit.SECONDS)    // Write Timeout
     .build()
 interface OpenAIApiService {
-    @Headers("Authorization: Bearer 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")
+    @Headers("Authorization: Bearer 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")
     @POST("/v1/chat/completions")
     suspend fun getChatResponse(@Body requestData: ChatRequestData): ChatResponseData
 

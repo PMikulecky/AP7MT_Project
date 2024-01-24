@@ -10,11 +10,24 @@ import androidx.compose.ui.text.font.FontFamily
 
 // Define a basic color scheme
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF6200EE),
+    primary = Color(0xFF40009C),
+    primaryContainer = Color(0xFFBBA8D8),
+    secondary = Color(0xFF03DAC5),
+    background = Color(0xFFE4E2E7),
+    surface = Color(0xFFEDEBF0),
+    onPrimary = Color.White,
+    onSecondary = Color.Black,
+    onBackground = Color.Black,
+    onSurface = Color.Black,
+    // Include other color definitions as needed
+)
+
+private val DarkColorScheme = lightColorScheme(
+    primary = Color(0xFF1F004B),
     primaryContainer = Color(0xFF3700B3),
     secondary = Color(0xFF03DAC5),
-    background = Color(0xFFE4E4E4),
-    surface = Color(0xFFFFFFFF),
+    background = Color(0xFF2E2C31),
+    surface = Color(0xFF4E4E4E),
     onPrimary = Color.White,
     onSecondary = Color.Black,
     onBackground = Color.Black,
@@ -49,7 +62,7 @@ fun FreezerTheme(
 ) {
     val colors = if (darkTheme) {
         // Define Dark Color Scheme if needed
-        LightColorScheme
+        DarkColorScheme
     } else {
         LightColorScheme
     }

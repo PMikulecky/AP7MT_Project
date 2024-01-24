@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 import com.example.freezer.model.FoodItem
 import com.example.freezer.model.Drawer
 import com.example.freezer.model.DrawerWithItems
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -32,6 +33,13 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
     private val _searchResults = MutableLiveData<List<FoodItem>>()
     val searchResults: LiveData<List<FoodItem>> = _searchResults
 
+    private val _allItems = MutableLiveData<List<FoodItem>>()
+    val allItems: LiveData<List<FoodItem>> = _allItems
+
+    private val _formattedItems = MutableLiveData<String>()
+    val formattedItems: LiveData<String> = _formattedItems
+
+
     init {
         getAllDrawers()
         getAllDrawersWithItems()
@@ -41,8 +49,6 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
     fun addDrawer(name: String) {
         viewModelScope.launch {
             val newDrawerId = drawerDao.insertDrawer(Drawer(name = name))
-            // Do something with the newDrawerId if needed
-
             refreshDrawersWithItems()
         }
     }
@@ -89,7 +95,7 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun getAllDrawersWithItems() {
         viewModelScope.launch {
-            val allDrawersWithItems = drawerDao.getAllDrawersWithItems() // Assuming such a method exists in your DAO
+            val allDrawersWithItems = drawerDao.getAllDrawersWithItems()
             _drawersWithItems.postValue(allDrawersWithItems)
         }
     }
@@ -97,7 +103,7 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
     // Function to remove an item
     fun deleteItem(itemId: Int) {
         viewModelScope.launch {
-            itemDao.deleteItem(itemId) // Assuming such a method exists in your DAO
+            itemDao.deleteItem(itemId)
             refreshDrawersWithItems()
         }
     }
@@ -105,8 +111,8 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
     // Function to remove a drawer and all items in it
     fun deleteDrawer(drawerId: Int) {
         viewModelScope.launch {
-            itemDao.deleteItemsByDrawerId(drawerId) // Assuming such a method exists in your DAO
-            drawerDao.deleteDrawer(drawerId) // Assuming such a method exists in your DAO
+            itemDao.deleteItemsByDrawerId(drawerId)
+            drawerDao.deleteDrawer(drawerId)
             refreshDrawersWithItems()
         }
     }
@@ -120,10 +126,41 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
 
     fun searchItems(query: String) {
         viewModelScope.launch {
-            val allItems = itemDao.getAllItems() // Assuming you have a method to get all items
+            val allItems = itemDao.getAllItems()
             _searchResults.value = allItems.filter {
                 it.name.contains(query, ignoreCase = true)
             }
         }
     }
+
+    fun getItems() {
+        viewModelScope.launch {
+            val allItems = itemDao.getAllItems()
+            _allItems.postValue(allItems)
+        }
+    }
+
+    // Function to get DrawerWithItems for a specific item
+    fun getDrawerWithItemsForItem(item: FoodItem): LiveData<DrawerWithItems> {
+        val result = MutableLiveData<DrawerWithItems>()
+        viewModelScope.launch {
+            // Retrieve the drawer that contains the item
+            val drawer = drawerDao.getDrawerById(item.drawerId)
+            // Retrieve all items for the found drawer
+            val items = itemDao.getItemsByDrawer(item.drawerId)
+            // Combine the drawer and its items into a DrawerWithItems object
+            val drawerWithItems = DrawerWithItems(drawer, items)
+            result.postValue(drawerWithItems)
+        }
+        return result
+    }
+
+    fun formatItemsForAPI() {
+        viewModelScope.launch {
+            val allItems = itemDao.getAllItems()
+            val formattedString = allItems.joinToString(separator = ", ") { it.name }
+            _formattedItems.postValue(formattedString)
+        }
+    }
+
 }

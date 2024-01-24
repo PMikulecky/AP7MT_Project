@@ -30,4 +30,7 @@ interface DrawerDao {
 
     @Query("UPDATE drawers SET name = :newName WHERE DrawerId = :drawerId")
     suspend fun updateDrawerName(drawerId: Int, newName: String)
+
+    @Query("SELECT * FROM drawers WHERE DrawerId = :drawerId")
+    suspend fun getDrawerById(drawerId: Int): Drawer
 }

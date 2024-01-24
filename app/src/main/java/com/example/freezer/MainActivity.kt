@@ -6,10 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -25,12 +29,14 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -70,7 +76,7 @@ class MainActivity : ComponentActivity() {
                     NavHost(navController = navController, startDestination = "home") {
                         composable("home") { HomeScreen(viewModel, innerPadding) }
                         composable("search") { SearchScreen(viewModel) }
-                        composable("profile") { AIScreen(apiViewModel) }
+                        composable("profile") { AIScreen(apiViewModel, viewModel) }
                         // Add other composable routes if necessary
                     }
                 }
@@ -181,39 +187,74 @@ fun SearchScreen(viewModel: DrawerViewModel) {
     // Observe search results from ViewModel
     val searchResults by viewModel.searchResults.observeAsState(listOf())
 
+    val selectedCard = remember { mutableStateOf<DrawerWithItems?>(null) }
+    val drawerWithItemsLiveData = remember { mutableStateOf<LiveData<DrawerWithItems>?>(null) }
+
+
+
     // Update search results in ViewModel based on the query
     LaunchedEffect(searchQuery.value) {
         viewModel.searchItems(searchQuery.value)
     }
 
-    Column {
-        // Search Bar
-        OutlinedTextField(
-            value = searchQuery.value,
-            onValueChange = { searchQuery.value = it },
-            label = { Text("Search Food Items") },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        )
+    LaunchedEffect(drawerWithItemsLiveData.value) {
+        drawerWithItemsLiveData.value?.observeForever { drawerWithItems ->
+            selectedCard.value = drawerWithItems
+        }
+    }
 
-        // List of Search Results
-        LazyColumn {
-            items(searchResults) { item ->
-                Text(
-                    text = item.name,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                )
-                Divider()
+    if (selectedCard.value != null) {
+        selectedCard.value?.let { drawerWithItems ->
+            DrawerDetailScreen(
+                drawerWithItems = drawerWithItems,
+                onClose = { selectedCard.value = null },
+                // Add your implementations for onEdit and onDeleteItem
+                onEdit = { /* ... */ },
+                onDeleteItem = { /* ... */ }
+            )
+        }
+    } else {
+        Column {
+            Text(
+                "Freezer",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(16.dp)
+            )
+            //Spacer(modifier = Modifier.height(16.dp))
+            // Search Bar
+            OutlinedTextField(
+                value = searchQuery.value,
+                onValueChange = { searchQuery.value = it },
+                label = { Text("Search Food Items") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            )
+
+            // List of Search Results
+            LazyColumn {
+                items(searchResults) { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .clickable {
+                                drawerWithItemsLiveData.value = viewModel.getDrawerWithItemsForItem(item)
+                            },
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(text = item.name)
+                        Text(text = "${item.drawerId}")
+                    }
+                    Divider()
+                }
             }
         }
     }
 }
 
 @Composable
-fun AIScreen(apiViewModel: ApiViewModel) {
+fun AIScreen(apiViewModel: ApiViewModel, viewModel: DrawerViewModel) {
     // State to hold the input text
     val inputText = remember { mutableStateOf("") }
 
@@ -221,41 +262,60 @@ fun AIScreen(apiViewModel: ApiViewModel) {
     val apiResponse = apiViewModel.chatResponse.observeAsState("")
     val isLoading = apiViewModel.isLoading.observeAsState(initial = false)
 
+    val navController = rememberNavController()
 
-    Column(modifier = Modifier.padding(16.dp)) {
-        // Text field for user input
-        OutlinedTextField(
-            value = inputText.value,
-            onValueChange = { inputText.value = it },
-            label = { Text("Enter items") },
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+    LaunchedEffect(Unit) {
+        viewModel.formatItemsForAPI()
+    }
 
-        // Button to trigger API call
-        Button(
+    val formattedItems = viewModel.formattedItems.observeAsState("")
+
+    Scaffold(
+        bottomBar = { BottomNavigationBar(navController) },
+        floatingActionButton = { FloatingActionButton(
             onClick = {
-                apiViewModel.getChatResponseFromAPI(inputText.value)
-            }
+                val prompt = formattedItems.value
+                apiViewModel.getChatResponseFromAPI(prompt)
+            },
+            modifier = Modifier.size(width = 170.dp, height = 56.dp)
         ) {
-            Text("Get Response")
-        }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Star"
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text("Generate recipe")
+            }
+        } },
+        floatingActionButtonPosition = FabPosition.Center,
+        content = {innerPadding ->
+        Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // Display the API response
-        Text("Response: ${apiResponse.value}")
+            // Display the API response
+            Text(apiResponse.value)
 
-        if (isLoading.value) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            if (isLoading.value) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            }
         }
     }
+    )
+
 }
 
 @Composable
 fun AddDrawerFAB(onClick: () -> Unit) {
     FloatingActionButton(
         onClick = { onClick() },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier
+            .size(120.dp)  // Set the size of the button
+            .padding(8.dp)  // Add some padding for spacing
+            .clip(CircleShape)
+
     ) {
         Icon(
             imageVector = Icons.Default.Add,
@@ -344,10 +404,10 @@ fun EditDrawerDialog(drawer: DrawerWithItems,
 fun AddItemDialog(viewModel: DrawerViewModel,isItemDialogOpen: MutableState<Boolean>){
     val foodItemName = remember { mutableStateOf("") }
     val foodItemCount = remember { mutableStateOf("") }
-    val quantityType = remember { mutableStateOf("pieces") } // For Type of Quantity
+    val quantityType = remember { mutableStateOf("pieces") }
     val selectedDrawer = remember { mutableStateOf<DrawerWithItems?>(null) }
     val expanded = remember { mutableStateOf(false) }
-    val quantityTypeExpanded = remember { mutableStateOf(false) } // For Type of Quantity dropdown
+    val quantityTypeExpanded = remember { mutableStateOf(false) }
     val drawersWithItems by viewModel.drawersWithItems.observeAsState(listOf())
 
 
@@ -374,14 +434,16 @@ fun AddItemDialog(viewModel: DrawerViewModel,isItemDialogOpen: MutableState<Bool
                         },
                         label = { Text("Quantity") },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
                             .padding(vertical = 8.dp)
                             .padding(end = 8.dp)
                     )
                     ExposedDropdownMenuBox(
                         expanded = quantityTypeExpanded.value,
                         onExpandedChange = { quantityTypeExpanded.value = !quantityTypeExpanded.value },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
                             .padding(vertical = 8.dp)
                     ) {
                         OutlinedTextField(
@@ -423,7 +485,8 @@ fun AddItemDialog(viewModel: DrawerViewModel,isItemDialogOpen: MutableState<Bool
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded.value)
                         },
-                        modifier = Modifier.menuAnchor()
+                        modifier = Modifier
+                            .menuAnchor()
                             .padding(vertical = 8.dp)
                     )
                     ExposedDropdownMenu(
@@ -478,7 +541,8 @@ fun AddItemDialog(viewModel: DrawerViewModel,isItemDialogOpen: MutableState<Bool
 @Composable
 fun BottomNavigationBar(navController: NavController) {
 
-    NavigationBar {
+
+    NavigationBar{
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
             label = { Text("Home") },
@@ -498,9 +562,9 @@ fun BottomNavigationBar(navController: NavController) {
             onClick = { navController.navigate("profile") }
         )
     }
-
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
     Card(
@@ -511,24 +575,39 @@ fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .padding(vertical = 4.dp)
+            .padding(vertical = 4.dp),
+        border = BorderStroke(1.dp, Color.LightGray)
     ) {
         Column {
             Text("Drawer ${drawerWithItems.drawer.name}",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(16.dp)
             )
-            Row(
+            FlowRow(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 16.dp)
                     .wrapContentWidth(align = Alignment.Start),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 drawerWithItems.items.forEach { item ->
                     Text(item.name,
                         style = MaterialTheme.typography.bodyMedium
                     )
+
+                    val suffix = when (item.quantityType) {
+                        "pieces" -> "x,"
+                        "grams" -> "g,"
+                        "milliliters" -> "ml,"
+                        else -> ""
+                    }
+                    val itemCountText = "${item.itemCount}$suffix"
+
+                    Text(itemCountText,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier
+                            .padding(end = 8.dp))
+
                 }
             }
         }
@@ -537,22 +616,22 @@ fun DrawerCard(drawerWithItems: DrawerWithItems, onClick: () -> Unit) {
 
 @Composable
 fun AddDrawer(onClick: () -> Unit) {
-    OutlinedCard(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        border = BorderStroke(1.dp, Color.Gray),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Text(
-            "Add New Drawer",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.padding(16.dp)
-        )
-    }
+        OutlinedCard(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.background,
+            ),
+            border = BorderStroke(1.dp, Color.Gray),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .clickable(onClick = onClick)
+        ) {
+            Text(
+                "+  Add New Drawer",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -578,23 +657,59 @@ fun DrawerDetailScreen(drawerWithItems: DrawerWithItems, onClose: () -> Unit, on
                     }
                 }
             )
-            LazyColumn(
-                modifier = Modifier.padding(16.dp)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                contentPadding = PaddingValues(16.dp)
             ) {
-                items(drawerWithItems.items) { item ->
-                    Row(
+                items(drawerWithItems.items.size) { index ->
+                    val item = drawerWithItems.items[index]
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                        ),
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(8.dp)
+                            .fillMaxWidth(),
+                        border = BorderStroke(1.dp, Color.LightGray)
                     ) {
-                        Text(item.name, style = MaterialTheme.typography.bodyMedium)
-                        IconButton(onClick = { onDeleteItem(item.itemId) }) {  // Use item's ID here
-                            Icon(Icons.Default.Delete, contentDescription = "Delete")
+                        Column(
+                            modifier = Modifier.padding(vertical = 16.dp)
+                        ) {
+                            Text(item.name, style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp))
+
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val suffix = when (item.quantityType) {
+                                "pieces" -> "x"
+                                "grams" -> "g"
+                                "milliliters" -> "ml"
+                                else -> ""
+                            }
+                            val itemCountText = "${item.itemCount}$suffix"
+                            Text(itemCountText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .padding(horizontal = 16.dp))
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Divider()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row {
+                                Column (
+                                    modifier = Modifier.padding(start = 16.dp)
+                                ){
+                                    Text("Added on:", style = MaterialTheme.typography.bodySmall)
+                                    Text("${item.dateAdded}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Spacer(modifier = Modifier.width(50.dp))
+
+                                IconButton(onClick = { onDeleteItem(item.itemId) },
+                                    modifier = Modifier.padding(end = 16.dp)) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                                }
+                            }
                         }
                     }
-                    Divider()
                 }
             }
         }

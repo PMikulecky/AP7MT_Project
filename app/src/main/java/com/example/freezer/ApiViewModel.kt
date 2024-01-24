@@ -24,7 +24,7 @@ class ApiViewModel : ViewModel() {
             try {
                 // Define the message list for the Chat API
                 val messages = listOf(
-                    Message(role = "user", content = "Create a recipe with $items")
+                    Message(role = "user", content = "Make recipe from some of these food items: $items")
                 )
 
                 // Create a request data object for the Chat API
