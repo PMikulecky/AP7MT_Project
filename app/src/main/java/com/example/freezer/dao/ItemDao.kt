@@ -18,4 +18,7 @@ interface ItemDao {
     suspend fun deleteItemsByDrawerId(drawerId: Int)
     @Query("SELECT * FROM items WHERE drawerId = :drawerId")
     suspend fun getItemsByDrawer(drawerId: Int): List<FoodItem>
+
+    @Query("SELECT * FROM items")
+    suspend fun getAllItems(): List<FoodItem>
 }

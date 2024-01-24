@@ -27,6 +27,9 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
     private val _drawersWithItems = MutableLiveData<List<DrawerWithItems>>()
     val drawersWithItems: LiveData<List<DrawerWithItems>> = _drawersWithItems
 
+    private val _searchResults = MutableLiveData<List<FoodItem>>()
+    val searchResults: LiveData<List<FoodItem>> = _searchResults
+
     init {
         getAllDrawers()
         getAllDrawersWithItems()
@@ -109,6 +112,15 @@ class DrawerViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             drawerDao.updateDrawerName(drawerId, newName)
             refreshDrawersWithItems()  // Refresh the list of drawers with items
+        }
+    }
+
+    fun searchItems(query: String) {
+        viewModelScope.launch {
+            val allItems = itemDao.getAllItems() // Assuming you have a method to get all items
+            _searchResults.value = allItems.filter {
+                it.name.contains(query, ignoreCase = true)
+            }
         }
     }
 }

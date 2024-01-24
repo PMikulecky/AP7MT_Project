@@ -17,16 +17,22 @@ import androidx.compose.ui.Alignment
 
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode.Companion.Screen
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.NavController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import com.example.freezer.model.DrawerWithItems
 import com.example.freezer.model.FoodItem
 import com.example.freezer.ui.theme.FreezerTheme
@@ -34,12 +40,13 @@ import com.google.android.material.transition.MaterialContainerTransform
 
 class MainActivity : ComponentActivity() {
 
+
     private lateinit var viewModel: DrawerViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
         super.onCreate(savedInstanceState)
         viewModel = ViewModelProvider(this).get(DrawerViewModel::class.java)
+
 
         //viewModel.addDrawer("new Drawer 2")
         //viewModel.addItemToDrawer(2, "Potato")
@@ -49,29 +56,34 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             FreezerTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    FreezerScreen(viewModel)
+                val navController = rememberNavController()
+
+                Scaffold(
+                    bottomBar = { BottomNavigationBar(navController) },
+
+                    // ... include other Scaffold parameters if needed
+                ) { innerPadding ->
+                    NavHost(navController = navController, startDestination = "home") {
+                        composable("home") { HomeScreen(viewModel, innerPadding) }
+                        composable("search") { SearchScreen(viewModel) }
+                        composable("profile") { ProfileScreen() }
+                        // Add other composable routes if necessary
+                    }
                 }
             }
         }
         viewModel.drawers.observe(this) { drawers ->
-            // Update your UI here based on the list of drawers
         }
-
-
     }
-
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FreezerScreen(viewModel: DrawerViewModel) {
+fun HomeScreen(viewModel: DrawerViewModel, innerPadding: PaddingValues) {
     //val drawers by viewModel.drawers.observeAsState(listOf())
 
     val selectedCard = remember { mutableStateOf<DrawerWithItems?>(null) }
+    val navController = rememberNavController()
 
     val drawersWithItems by viewModel.drawersWithItems.observeAsState(listOf())
 
@@ -87,13 +99,13 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
     val expanded = remember { mutableStateOf(false) } // State to handle dropdown menu visibility
     val editDrawerName = remember { mutableStateOf("") }
 
-    AddDrawerDialog(viewModel, isDrawerDialogOpen)
+
 
     Scaffold(
-        bottomBar = { BottomNavigationBar() },
-        floatingActionButton = { AddDrawerFAB { isItemDialogOpen.value = true } },
-        floatingActionButtonPosition = FabPosition.Center
-        ) { innerPadding ->
+        bottomBar = { BottomNavigationBar(navController) },
+        floatingActionButton = { AddDrawerFAB{isItemDialogOpen.value = true} },
+        floatingActionButtonPosition = FabPosition.Center,
+        content = { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -152,7 +164,7 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
             }
         }
     }
-
+    )
 
     if (isItemDialogOpen.value) {
         AlertDialog(
@@ -234,7 +246,54 @@ fun FreezerScreen(viewModel: DrawerViewModel) {
                 }
             }
         )
+
     }
+    if (isDrawerDialogOpen.value) {
+        AddDrawerDialog(viewModel, isDrawerDialogOpen)
+    }
+}
+
+@Composable
+fun SearchScreen(viewModel: DrawerViewModel) {
+    // State for search query
+    val searchQuery = remember { mutableStateOf("") }
+
+    // Observe search results from ViewModel
+    val searchResults by viewModel.searchResults.observeAsState(listOf())
+
+    // Update search results in ViewModel based on the query
+    LaunchedEffect(searchQuery.value) {
+        viewModel.searchItems(searchQuery.value)
+    }
+
+    Column {
+        // Search Bar
+        OutlinedTextField(
+            value = searchQuery.value,
+            onValueChange = { searchQuery.value = it },
+            label = { Text("Search Food Items") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        )
+
+        // List of Search Results
+        LazyColumn {
+            items(searchResults) { item ->
+                Text(
+                    text = item.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                )
+                Divider()
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileScreen() {
 
 }
 
@@ -328,25 +387,26 @@ fun EditDrawerDialog(drawer: DrawerWithItems,
 }
 
 @Composable
-fun BottomNavigationBar() {
+fun BottomNavigationBar(navController: NavController) {
+
     NavigationBar {
         NavigationBarItem(
             icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
             label = { Text("Home") },
-            selected = false,
-            onClick = { /* Handle Home click */ }
+            selected = navController.currentDestination?.route == "home",
+            onClick = { navController.navigate("home") }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.Search, contentDescription = "Search") },
             label = { Text("Search") },
-            selected = false,
-            onClick = { /* Handle Search click */ }
+            selected = navController.currentDestination?.route == "search",
+            onClick = { navController.navigate("search") }
         )
         NavigationBarItem(
             icon = { Icon(Icons.Default.AccountCircle, contentDescription = "Profile") },
             label = { Text("Profile") },
-            selected = false,
-            onClick = { /* Handle Profile click */ }
+            selected = navController.currentDestination?.route == "profile",
+            onClick = { navController.navigate("profile") }
         )
     }
 
